@@ -1,0 +1,40 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"workbench.colorCustomizations": {
+			"activityBar.background": "#c46d3a",
+			"activityBar.inactiveForeground": "#774c33",
+			"activityBar.activeBackground": "#ccb877",
+			"activityBar.foreground": "#4e1900",
+			"activityBar.activeBorder": "#010033",
+			"activityBarBadge.background": "#010033",
+			"activityBarBadge.foreground": "#e7e7e7",
+		},
+		"editor.tabSize": 2,
+		"editor.detectIndentation": false,
+		"editor.formatOnSave": true,
+		"editor.insertSpaces": false,
+		"files.eol": "\n",
+		"typescript.tsdk": "node_modules/typescript/lib",
+		"typescript.enablePromptUseWorkspaceTsdk": true,
+		"typescript.preferences.importModuleSpecifier": "shortest",
+		"svelte.enable-ts-plugin": true,
+		"git.rebaseWhenSync": true,
+		"git.fetchOnPull": true,
+	},
+	"extensions": {
+		"recommendations": [
+			"esbenp.prettier-vscode",
+			"svelte.svelte-vscode",
+			"aaron-bond.better-comments",
+			"usernamehw.errorlens",
+			"christian-kohler.path-intellisense",
+			"pflannery.vscode-versionlens",
+			"vscode-icons-team.vscode-icons",
+		]
+	},
+}
