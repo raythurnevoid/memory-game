@@ -7,18 +7,20 @@
 	import { quadIn, quadOut } from 'svelte/easing';
 	import tweenTo from '$lib/logic/tween';
 	import { Vector3 } from 'three';
+	import { cardSize, type Position } from './game-grid';
 
 	/**
 	 * `true` is face up, `false` is face down
 	 */
 	export let side: boolean = false;
+	export let position: Position = [0, 0];
 
 	const game$ = getGameContext$();
 
 	let mesh: THREE.Mesh;
 
 	onMount(() => {
-		const geometry = RoundEdgedBoxFlat(0.8, 1, 0.01, 0.02, 10);
+		const geometry = RoundEdgedBoxFlat(cardSize[0], cardSize[1], 0.01, 0.02, 10);
 
 		const backTexture = $game$.textureLoader.load(questionMarkSvg);
 		const material: THREE.Material[] = [
@@ -43,13 +45,10 @@
 
 		function initMesh() {
 			mesh = new THREE.Mesh(geometry, material);
+			mesh.position.setX(position[0]);
+			mesh.position.setY(position[1]);
 
-			let angle = 0.2;
-			const yAxis = new THREE.Vector3(0, 1, 0);
-			// mesh.quaternion.copy(new THREE.Quaternion().setFromAxisAngle(yAxis, Math.PI * (1 + angle)));
-			mesh.rotation.setFromVector3(new Vector3(0, Math.PI * (2 + angle), 0));
-
-			filpCard(side);
+			filpCard(side, false);
 
 			$game$.scene.add(mesh);
 
@@ -75,59 +74,55 @@
 		};
 	});
 
-	async function filpCard(newSide: boolean) {
+	async function filpCard(newSide: boolean, animate = true) {
 		side = newSide;
 
-		let angle = 0.2; // TODO: just for testing, to remove
-
 		let r: Vector3[];
-		let p: Vector3[];
+		const p: Vector3[] = [
+			new THREE.Vector3(mesh.position.x, mesh.position.y, mesh.position.z),
+			new THREE.Vector3(mesh.position.x, mesh.position.y, 1.5),
+			new THREE.Vector3(mesh.position.x, mesh.position.y, 0)
+		];
 
 		if (side) {
 			// face up
 			const r0 = new Vector3().setFromEuler(mesh.rotation.clone());
-			const r1 = new Vector3(0, Math.PI * (1 + angle), 0);
+			const r1 = new Vector3(0, Math.PI, 0);
 
-			if (r0.y < r1.y - Math.PI * 2) {
+			if (r0.y <= r1.y - Math.PI * 2) {
 				// Avoid difference between r0 and r1 to be larger than 2PI to avoid uncessary rotations
-				r0.add(new Vector3(0, Math.PI * 2, 0));
+				r0.setY(r0.y + Math.PI * 2);
 			}
 
 			r = [r0, r1];
-			p = [
-				new THREE.Vector3(mesh.position.x, mesh.position.y, 0),
-				new THREE.Vector3(mesh.position.x, mesh.position.y, 1),
-				new THREE.Vector3(mesh.position.x, mesh.position.y, 0)
-			];
 		} else {
 			// face down
 			const r0 = new Vector3().setFromEuler(mesh.rotation.clone());
-			const r1 = new Vector3(0, Math.PI * angle, 0);
+			const r1 = new Vector3(0, 0, 0);
 
 			if (r0.y > r1.y) {
-				// Avoid difference between r0 and r1 to be larger than 2PI to avoid uncessary rotations
-				r0.sub(new Vector3(0, Math.PI * 2, 0));
+				// r0 must always be smaller than r1 to keep rotation direction correct
+				r0.setY(r0.y - Math.PI * 2);
 			}
 
 			r = [r0, r1];
-			p = [
-				new Vector3(mesh.position.x, mesh.position.y, 0),
-				new Vector3(mesh.position.x, mesh.position.y, 1),
-				new Vector3(mesh.position.x, mesh.position.y, 0)
-			];
+		}
+
+		if (r[0].y === r[1].y) {
+			return;
 		}
 
 		tweenR(r[0], r[1], {
-			duration: 500,
+			duration: animate ? 500 : 0,
 			easing: quadOut
 		});
 
 		tweenP(p[0], p[1], {
-			duration: 250,
+			duration: animate ? 250 : 0,
 			easing: quadOut
 		}).then(() =>
 			tweenP(p[1], p[2], {
-				duration: 250,
+				duration: animate ? 250 : 0,
 				easing: quadIn
 			})
 		);

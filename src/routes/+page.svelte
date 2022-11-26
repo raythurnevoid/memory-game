@@ -2,6 +2,7 @@
 	import { createContext } from '@raythurnevoid/svelte-context-enhanced';
 	import {
 		LoadingManager,
+		type Mesh,
 		PerspectiveCamera,
 		Raycaster,
 		Scene,
@@ -18,11 +19,13 @@
 		scene: Scene;
 		textureLoader: TextureLoader;
 		addTextureLoadListener: (cb: () => void) => Unsubscriber;
-		addMeshClickListener: (
-			mesh: THREE.Mesh,
-			cb: (data: { event: TouchEvent | MouseEvent; intersection: Intersection }) => void
-		) => Unsubscriber;
+		addMeshClickListener: (mesh: Mesh, cb: ClickListener) => Unsubscriber;
 	}
+
+	type ClickListener = (data: {
+		event: TouchEvent | MouseEvent;
+		intersection: Intersection;
+	}) => void;
 
 	type Unsubscriber = () => void;
 </script>
@@ -32,15 +35,18 @@
 	import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 	import { derived, writable } from 'svelte/store';
 	import Card from './Card.svelte';
+	import { createCardsRowPositions } from './game-grid';
 
 	const scene$ = writable<Scene>(undefined);
 	const et = new EventTarget();
+	let controls: OrbitControls | null = null;
 	let renderer: WebGLRenderer;
 	let loadManager: LoadingManager;
 	let textureLoader: TextureLoader;
 	let camera: PerspectiveCamera;
 	let raycaster: Raycaster;
 	let pointer: Vector2;
+	let clickListeners: [Mesh, ClickListener][] = [];
 
 	setGameContext$(
 		derived(scene$, ($scene$) => {
@@ -48,29 +54,23 @@
 				scene: $scene$,
 				textureLoader,
 				loadManager,
-				addTextureLoadListener: (cb) => {
-					et.addEventListener('textureLoad', cb, {
+				addTextureLoadListener: (listener) => {
+					et.addEventListener('textureLoad', listener, {
 						once: true,
 						passive: true
 					});
 
-					return () => et.removeEventListener('textureLoad', cb);
+					return () => et.removeEventListener('textureLoad', listener);
 				},
-				addMeshClickListener: (mesh, cb) => {
-					renderer.domElement.addEventListener('click', listener);
-
-					function listener(event: MouseEvent) {
-						event.preventDefault();
-						raycaster.setFromCamera(pointer, camera);
-						const intersections = raycaster.intersectObject(mesh);
-						if (intersections.length) {
-							const intersection = intersections[0];
-							cb({ event, intersection });
-						}
-					}
+				addMeshClickListener: (mesh, listener) => {
+					clickListeners.push([mesh, listener]);
 
 					return () => {
-						renderer.domElement.removeEventListener('click', listener);
+						const listenerToRemove = listener;
+						const meshToRemove = mesh;
+						clickListeners = clickListeners.filter(
+							([mesh]) => mesh !== meshToRemove && listener !== listenerToRemove
+						);
 					};
 				}
 			} as GameContext;
@@ -86,31 +86,20 @@
 		textureLoader = new TextureLoader(loadManager);
 
 		// TODO: to improve, what if canvas is not full screen?
-		camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-		camera.position.z = 5;
+		camera = new PerspectiveCamera(20, window.innerWidth / window.innerHeight, 0.1, 1000);
+		camera.position.set(1.8, -3, 15);
 
 		// controls
-		const controls = new OrbitControls(camera, renderer.domElement);
-		controls.listenToKeyEvents(window); // optional
-		//controls.addEventListener( 'change', render ); // call this only in static scenes (i.e., if there is no animation loop)
-		controls.rotateSpeed = 3;
-		controls.screenSpacePanning = false;
-		controls.minDistance = 1;
-		controls.maxDistance = 20;
+		if (controls !== null) {
+			controls = new OrbitControls(camera, renderer.domElement);
+			controls.listenToKeyEvents(window); // optional
+			controls.rotateSpeed = 3;
+			controls.screenSpacePanning = false;
+			controls.minDistance = 1;
+			controls.maxDistance = 20;
+		}
 
-		raycaster = new Raycaster();
-		pointer = new Vector2();
-		renderer.domElement.addEventListener(
-			'pointermove',
-			(event: PointerEvent) => {
-				// TODO: to improve, what if canvas is not full screen?
-				pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
-				pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
-			},
-			{
-				passive: true
-			}
-		);
+		const destroyRaycaster = initRaycaster();
 
 		const sceneEl = document.getElementById('scene') as HTMLDivElement;
 		sceneEl.appendChild(renderer.domElement);
@@ -118,18 +107,53 @@
 
 		let frameId: number;
 		const render = () => {
-			controls.update();
+			controls?.update();
 			renderer.render($scene$, camera);
 			frameId = requestAnimationFrame(render);
 		};
 		render();
 
 		return () => {
-			controls.dispose();
+			destroyRaycaster();
+			controls?.dispose();
 			renderer.dispose();
 			cancelAnimationFrame(frameId);
 		};
 	});
+
+	function initRaycaster() {
+		raycaster = new Raycaster();
+		pointer = new Vector2();
+		renderer.domElement.addEventListener('pointermove', handlePointerMove, {
+			passive: true
+		});
+		renderer.domElement.addEventListener('click', handleClick);
+
+		function handlePointerMove(event: PointerEvent) {
+			// TODO: to improve, what if canvas is not full screen?
+			pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
+			pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
+		}
+
+		function handleClick(event: MouseEvent) {
+			event.preventDefault();
+			raycaster.setFromCamera(pointer, camera);
+			const meshesListening = Array.from(new Set(clickListeners.map(([mesh]) => mesh)));
+			const intersections = raycaster.intersectObjects(meshesListening);
+			if (intersections.length) {
+				const intersection = intersections[0];
+				const listenersToCall = clickListeners
+					.filter(([mesh]) => mesh === intersection.object)
+					.map(([, listener]) => listener);
+				listenersToCall.forEach((listener) => listener({ event, intersection }));
+			}
+		}
+
+		return () => {
+			renderer.domElement.removeEventListener('pointermove', handlePointerMove);
+			renderer.domElement.removeEventListener('click', handleClick);
+		};
+	}
 </script>
 
 <svelte:head>
@@ -140,7 +164,18 @@
 <section>
 	<div id="scene">
 		{#if $scene$}
-			<Card />
+			{#each createCardsRowPositions({ row: 1, cols: 3, offsetXRatio: 0.5 }) as position}
+				<Card {position} />
+			{/each}
+			{#each createCardsRowPositions({ row: 2, cols: 4 }) as position}
+				<Card {position} />
+			{/each}
+			{#each createCardsRowPositions({ row: 3, cols: 4 }) as position}
+				<Card {position} />
+			{/each}
+			{#each createCardsRowPositions({ row: 4, cols: 3, offsetXRatio: 0.5 }) as position}
+				<Card {position} />
+			{/each}
 		{/if}
 	</div>
 </section>
