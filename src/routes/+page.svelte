@@ -3,7 +3,7 @@
 	import {
 		LoadingManager,
 		type Mesh,
-		PerspectiveCamera,
+		OrthographicCamera,
 		Raycaster,
 		Scene,
 		TextureLoader,
@@ -14,6 +14,8 @@
 	import type { Readable } from 'svelte/store';
 
 	export const [setGameContext$, getGameContext$] = createContext<Readable<GameContext>>();
+
+	export const gameBoardZ = 5;
 
 	export interface GameContext {
 		scene: Scene;
@@ -43,7 +45,7 @@
 	let renderer: WebGLRenderer;
 	let loadManager: LoadingManager;
 	let textureLoader: TextureLoader;
-	let camera: PerspectiveCamera;
+	let camera: OrthographicCamera;
 	let raycaster: Raycaster;
 	let pointer: Vector2;
 	let clickListeners: [Mesh, ClickListener][] = [];
@@ -86,8 +88,17 @@
 		textureLoader = new TextureLoader(loadManager);
 
 		// TODO: to improve, what if canvas is not full screen?
-		camera = new PerspectiveCamera(20, window.innerWidth / window.innerHeight, 0.1, 1000);
-		camera.position.set(1.8, -3, 15);
+		const aspectRaio = 16 / 9;
+		const viewSize = 5;
+		camera = new OrthographicCamera(
+			aspectRaio * -viewSize,
+			aspectRaio * viewSize,
+			viewSize,
+			-viewSize,
+			0.1,
+			10
+		);
+		camera.position.set(1.8, -3, 10);
 
 		// controls
 		if (controls !== null) {

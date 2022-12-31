@@ -1,9 +1,13 @@
+<script lang="ts" context="module">
+	const cardInitialScale = 1;
+</script>
+
 <script lang="ts">
 	import * as THREE from 'three';
 	import { onMount } from 'svelte';
 	import questionMarkSvg from '$lib/images/question-mark.svg';
 	import RoundEdgedBoxFlat from './RoundEdgedBoxFlat';
-	import { getGameContext$ } from './+page.svelte';
+	import { gameBoardZ, getGameContext$ } from './+page.svelte';
 	import { quadIn, quadOut } from 'svelte/easing';
 	import tweenTo from '$lib/logic/tween';
 	import { Vector3 } from 'three';
@@ -47,6 +51,8 @@
 			mesh = new THREE.Mesh(geometry, material);
 			mesh.position.setX(position[0]);
 			mesh.position.setY(position[1]);
+			mesh.position.setZ(gameBoardZ);
+			mesh.scale.set(cardInitialScale, cardInitialScale, cardInitialScale);
 
 			filpCard(side, false);
 
@@ -75,13 +81,24 @@
 	});
 
 	async function filpCard(newSide: boolean, animate = true) {
+		const animationElevation = 0.5;
+
 		side = newSide;
 
 		let r: Vector3[];
 		const p: Vector3[] = [
 			new THREE.Vector3(mesh.position.x, mesh.position.y, mesh.position.z),
-			new THREE.Vector3(mesh.position.x, mesh.position.y, 1.5),
-			new THREE.Vector3(mesh.position.x, mesh.position.y, 0)
+			new THREE.Vector3(mesh.position.x, mesh.position.y, gameBoardZ + animationElevation),
+			new THREE.Vector3(mesh.position.x, mesh.position.y, gameBoardZ)
+		];
+		const s: Vector3[] = [
+			new THREE.Vector3(mesh.scale.x, mesh.scale.y, 1),
+			new THREE.Vector3(
+				cardInitialScale + animationElevation,
+				cardInitialScale + animationElevation,
+				1
+			),
+			new THREE.Vector3(cardInitialScale, cardInitialScale, cardInitialScale)
 		];
 
 		if (side) {
@@ -127,6 +144,16 @@
 			})
 		);
 
+		tweenS(s[0], s[1], {
+			duration: animate ? 250 : 0,
+			easing: quadOut
+		}).then(() =>
+			tweenS(s[1], s[2], {
+				duration: animate ? 250 : 0,
+				easing: quadIn
+			})
+		);
+
 		function tweenR(
 			startValue: Vector3,
 			endValue: Vector3,
@@ -158,6 +185,24 @@
 				endValue,
 				(p) => {
 					mesh.position.copy(p);
+				},
+				{ ...options, interpolate: (a, b) => (t) => a.clone().lerp(b, t) }
+			);
+		}
+
+		function tweenS(
+			startValue: Vector3,
+			endValue: Vector3,
+			options: {
+				duration: number;
+				easing: (t: number) => number;
+			}
+		) {
+			return tweenTo(
+				startValue,
+				endValue,
+				(s) => {
+					mesh.scale.copy(s);
 				},
 				{ ...options, interpolate: (a, b) => (t) => a.clone().lerp(b, t) }
 			);
