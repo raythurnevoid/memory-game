@@ -3,7 +3,6 @@
 	import {
 		LoadingManager,
 		type Mesh,
-		OrthographicCamera,
 		Raycaster,
 		Scene,
 		TextureLoader,
@@ -11,7 +10,6 @@
 		WebGLRenderer,
 		type Intersection
 	} from 'three';
-	import type { Readable } from 'svelte/store';
 
 	export const [setGameContext$, getGameContext$] = createContext<Readable<GameContext>>();
 
@@ -19,6 +17,7 @@
 
 	export interface GameContext {
 		scene: Scene;
+		camera: Camera;
 		textureLoader: TextureLoader;
 		addTextureLoadListener: (cb: () => void) => Unsubscriber;
 		addMeshClickListener: (mesh: Mesh, cb: ClickListener) => Unsubscriber;
@@ -34,26 +33,28 @@
 
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-	import { derived, writable } from 'svelte/store';
+	import { derived, writable, type Readable } from 'svelte/store';
 	import Card from './Card.svelte';
 	import { createCardsRowPositions } from './game-grid';
+	import { createCamera, type Camera } from './camera';
+	import { createControls, type Controls } from './controls';
 
 	const scene$ = writable<Scene>(undefined);
+	const camera$ = createCamera({ type: 'perspective' });
 	const et = new EventTarget();
-	let controls: OrbitControls | null = null;
+	let controls$: Readable<Controls>;
 	let renderer: WebGLRenderer;
 	let loadManager: LoadingManager;
 	let textureLoader: TextureLoader;
-	let camera: OrthographicCamera;
 	let raycaster: Raycaster;
 	let pointer: Vector2;
 	let clickListeners: [Mesh, ClickListener][] = [];
 
 	setGameContext$(
-		derived(scene$, ($scene$) => {
+		derived([scene$, camera$], ([$scene$, $camera$]) => {
 			return {
 				scene: $scene$,
+				camera: $camera$,
 				textureLoader,
 				loadManager,
 				addTextureLoadListener: (listener) => {
@@ -80,6 +81,8 @@
 	);
 
 	onMount(() => {
+		const sceneEl = document.getElementById('scene') as HTMLDivElement;
+
 		renderer = new WebGLRenderer();
 		renderer.setSize(window.innerWidth, window.innerHeight);
 
@@ -87,46 +90,25 @@
 		loadManager.onLoad = () => et.dispatchEvent(new CustomEvent('textureLoad'));
 		textureLoader = new TextureLoader(loadManager);
 
-		// TODO: to improve, what if canvas is not full screen?
-		const aspectRaio = 16 / 9;
-		const viewSize = 5;
-		camera = new OrthographicCamera(
-			aspectRaio * -viewSize,
-			aspectRaio * viewSize,
-			viewSize,
-			-viewSize,
-			0.1,
-			10
-		);
-		camera.position.set(1.8, -3, 10);
-
-		// controls
-		if (controls !== null) {
-			controls = new OrbitControls(camera, renderer.domElement);
-			controls.listenToKeyEvents(window); // optional
-			controls.rotateSpeed = 3;
-			controls.screenSpacePanning = false;
-			controls.minDistance = 1;
-			controls.maxDistance = 20;
-		}
+		controls$ = createControls({ renderer, camera$, enabled: false });
 
 		const destroyRaycaster = initRaycaster();
 
-		const sceneEl = document.getElementById('scene') as HTMLDivElement;
 		sceneEl.appendChild(renderer.domElement);
 		$scene$ = new Scene();
 
 		let frameId: number;
 		const render = () => {
-			controls?.update();
-			renderer.render($scene$, camera);
+			// $controls$.instance?.update();
+			renderer.render($scene$, $camera$.instance);
 			frameId = requestAnimationFrame(render);
 		};
 		render();
 
 		return () => {
+			$camera$.destroy();
+			$controls$?.destroy();
 			destroyRaycaster();
-			controls?.dispose();
 			renderer.dispose();
 			cancelAnimationFrame(frameId);
 		};
@@ -148,7 +130,7 @@
 
 		function handleClick(event: MouseEvent) {
 			event.preventDefault();
-			raycaster.setFromCamera(pointer, camera);
+			raycaster.setFromCamera(pointer, $camera$.instance);
 			const meshesListening = Array.from(new Set(clickListeners.map(([mesh]) => mesh)));
 			const intersections = raycaster.intersectObjects(meshesListening);
 			if (intersections.length) {

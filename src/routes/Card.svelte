@@ -85,129 +85,159 @@
 
 		side = newSide;
 
-		let r: Vector3[];
-		const p: Vector3[] = [
-			new THREE.Vector3(mesh.position.x, mesh.position.y, mesh.position.z),
-			new THREE.Vector3(mesh.position.x, mesh.position.y, gameBoardZ + animationElevation),
-			new THREE.Vector3(mesh.position.x, mesh.position.y, gameBoardZ)
-		];
-		const s: Vector3[] = [
-			new THREE.Vector3(mesh.scale.x, mesh.scale.y, 1),
-			new THREE.Vector3(
-				cardInitialScale + animationElevation,
-				cardInitialScale + animationElevation,
-				1
-			),
-			new THREE.Vector3(cardInitialScale, cardInitialScale, cardInitialScale)
-		];
+		const r = createRStages();
 
-		if (side) {
-			// face up
-			const r0 = new Vector3().setFromEuler(mesh.rotation.clone());
-			const r1 = new Vector3(0, Math.PI, 0);
-
-			if (r0.y <= r1.y - Math.PI * 2) {
-				// Avoid difference between r0 and r1 to be larger than 2PI to avoid uncessary rotations
-				r0.setY(r0.y + Math.PI * 2);
-			}
-
-			r = [r0, r1];
-		} else {
-			// face down
-			const r0 = new Vector3().setFromEuler(mesh.rotation.clone());
-			const r1 = new Vector3(0, 0, 0);
-
-			if (r0.y > r1.y) {
-				// r0 must always be smaller than r1 to keep rotation direction correct
-				r0.setY(r0.y - Math.PI * 2);
-			}
-
-			r = [r0, r1];
-		}
-
-		if (r[0].y === r[1].y) {
+		if (!checkShouldAnimate(r)) {
 			return;
 		}
 
-		tweenR(r[0], r[1], {
-			duration: animate ? 500 : 0,
-			easing: quadOut
-		});
+		tweenR(r);
 
-		tweenP(p[0], p[1], {
-			duration: animate ? 250 : 0,
-			easing: quadOut
-		}).then(() =>
-			tweenP(p[1], p[2], {
+		const p = createPStages();
+		tweenP(p);
+
+		const s = createSStages();
+		tweenS(s);
+
+		function createRStages() {
+			let r: Vector3[];
+
+			if (side) {
+				// face up
+				const r0 = new Vector3().setFromEuler(mesh.rotation.clone());
+				const r1 = new Vector3(0, Math.PI, 0);
+
+				if (r0.y <= r1.y - Math.PI * 2) {
+					// Avoid difference between r0 and r1 to be larger than 2PI to avoid uncessary rotations
+					r0.setY(r0.y + Math.PI * 2);
+				}
+
+				r = [r0, r1];
+			} else {
+				// face down
+				const r0 = new Vector3().setFromEuler(mesh.rotation.clone());
+				const r1 = new Vector3(0, 0, 0);
+
+				if (r0.y > r1.y) {
+					// r0 must always be smaller than r1 to keep rotation direction correct
+					r0.setY(r0.y - Math.PI * 2);
+				}
+
+				r = [r0, r1];
+			}
+
+			return r;
+		}
+
+		function createPStages() {
+			const p: Vector3[] = [
+				new THREE.Vector3(mesh.position.x, mesh.position.y, mesh.position.z),
+				new THREE.Vector3(mesh.position.x, mesh.position.y, gameBoardZ + cardSize[0]),
+				new THREE.Vector3(mesh.position.x, mesh.position.y, gameBoardZ)
+			];
+
+			return p;
+		}
+
+		function createSStages() {
+			const endScale = cardInitialScale + animationElevation;
+
+			const s: Vector3[] = [
+				new THREE.Vector3(mesh.scale.x, mesh.scale.y, 1),
+				new THREE.Vector3(endScale, endScale, 1),
+				new THREE.Vector3(cardInitialScale, cardInitialScale, cardInitialScale)
+			];
+
+			return s;
+		}
+
+		function checkShouldAnimate(r: Vector3[]) {
+			return r[0].y !== r[1].y;
+		}
+
+		function tweenR(r: Vector3[]) {
+			tweenR(r[0], r[1], {
+				duration: animate ? 500 : 0,
+				easing: quadOut
+			});
+
+			function tweenR(
+				startValue: Vector3,
+				endValue: Vector3,
+				options: {
+					duration: number;
+					easing: (t: number) => number;
+				}
+			) {
+				return tweenTo(
+					startValue,
+					endValue,
+					(r) => {
+						mesh.rotation.setFromVector3(r);
+					},
+					{ ...options, interpolate: (a, b) => (t) => a.clone().lerp(b, t) }
+				);
+			}
+		}
+
+		function tweenP(p: Vector3[]) {
+			tweenAndSetPosition(p[0], p[1], {
 				duration: animate ? 250 : 0,
-				easing: quadIn
-			})
-		);
+				easing: quadOut
+			}).then(() =>
+				tweenAndSetPosition(p[1], p[2], {
+					duration: animate ? 250 : 0,
+					easing: quadIn
+				})
+			);
 
-		tweenS(s[0], s[1], {
-			duration: animate ? 250 : 0,
-			easing: quadOut
-		}).then(() =>
-			tweenS(s[1], s[2], {
+			function tweenAndSetPosition(
+				startValue: Vector3,
+				endValue: Vector3,
+				options: {
+					duration: number;
+					easing: (t: number) => number;
+				}
+			) {
+				return tweenTo(
+					startValue,
+					endValue,
+					(p) => {
+						mesh.position.copy(p);
+					},
+					{ ...options, interpolate: (a, b) => (t) => a.clone().lerp(b, t) }
+				);
+			}
+		}
+
+		function tweenS(s: Vector3[]) {
+			tweenAndSetScale(s[0], s[1], {
 				duration: animate ? 250 : 0,
-				easing: quadIn
-			})
-		);
-
-		function tweenR(
-			startValue: Vector3,
-			endValue: Vector3,
-			options: {
-				duration: number;
-				easing: (t: number) => number;
-			}
-		) {
-			return tweenTo(
-				startValue,
-				endValue,
-				(r) => {
-					mesh.rotation.setFromVector3(r);
-				},
-				{ ...options, interpolate: (a, b) => (t) => a.clone().lerp(b, t) }
+				easing: quadOut
+			}).then(() =>
+				tweenAndSetScale(s[1], s[2], {
+					duration: animate ? 250 : 0,
+					easing: quadIn
+				})
 			);
-		}
 
-		function tweenP(
-			startValue: Vector3,
-			endValue: Vector3,
-			options: {
-				duration: number;
-				easing: (t: number) => number;
+			function tweenAndSetScale(
+				startValue: Vector3,
+				endValue: Vector3,
+				options: {
+					duration: number;
+					easing: (t: number) => number;
+				}
+			) {
+				return tweenTo(
+					startValue,
+					endValue,
+					(s) => {
+						mesh.scale.copy(s);
+					},
+					{ ...options, interpolate: (a, b) => (t) => a.clone().lerp(b, t) }
+				);
 			}
-		) {
-			return tweenTo(
-				startValue,
-				endValue,
-				(p) => {
-					mesh.position.copy(p);
-				},
-				{ ...options, interpolate: (a, b) => (t) => a.clone().lerp(b, t) }
-			);
 		}
-
-		function tweenS(
-			startValue: Vector3,
-			endValue: Vector3,
-			options: {
-				duration: number;
-				easing: (t: number) => number;
-			}
-		) {
-			return tweenTo(
-				startValue,
-				endValue,
-				(s) => {
-					mesh.scale.copy(s);
-				},
-				{ ...options, interpolate: (a, b) => (t) => a.clone().lerp(b, t) }
-			);
-		}
-
-		// TODO: https://codepen.io/jakedowns/pen/ExoqYRm
 	}
 </script>
