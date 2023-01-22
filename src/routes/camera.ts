@@ -55,22 +55,21 @@ function createCameraInstance(type: 'perspective' | 'orthographic') {
 	const aspectRatio = window.innerWidth / window.innerHeight; // 16 / 9
 
 	if (type === 'perspective') {
-		const camera = new PerspectiveCamera(20, aspectRatio, 0.1, 1000);
-		camera.position.set(1.8, -3, 25);
+		// const camera = new PerspectiveCamera(20, aspectRatio, 0.1, 1000);
+		const camera = new PerspectiveCamera(90, aspectRatio, 0.1, 10000);
+		camera.position.set(1.8, -3, 500);
 
 		return camera;
 	} else if (type === 'orthographic') {
-		const viewSize = 5;
-
 		const camera = new OrthographicCamera(
-			aspectRatio * -viewSize,
-			aspectRatio * viewSize,
-			viewSize,
-			-viewSize,
-			0.1,
-			10
+			-window.innerWidth / 2,
+			window.innerWidth / 2,
+			window.innerHeight / 2,
+			-window.innerHeight / 2,
+			-10000,
+			10000
 		);
-		camera.position.set(1.8, -3, 10);
+		camera.position.set(1.8, -3, 1000);
 
 		return camera;
 	} else {

@@ -1,5 +1,5 @@
-export const cardSize: Size = [1, 1];
-export const cardsGap: Size = [0.2, 0.2];
+export const cardSize: Size = [100, 100];
+export const cardsGap: Size = [20, 20];
 
 function getCardWidth() {
 	return cardSize[0];

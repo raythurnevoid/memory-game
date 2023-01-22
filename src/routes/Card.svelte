@@ -24,7 +24,7 @@
 	let mesh: THREE.Mesh;
 
 	onMount(() => {
-		const geometry = RoundEdgedBoxFlat(cardSize[0], cardSize[1], 0.01, 0.02, 10);
+		const geometry = RoundEdgedBoxFlat(cardSize[0], cardSize[1], 10, 0.02, 10);
 
 		const backTexture = $game$.textureLoader.load(questionMarkSvg);
 		const material: THREE.Material[] = [
@@ -54,14 +54,14 @@
 			mesh.position.setZ(gameBoardZ);
 			mesh.scale.set(cardInitialScale, cardInitialScale, cardInitialScale);
 
-			filpCard(side, false);
+			flipCard(side, false);
 
 			$game$.scene.add(mesh);
 
 			const removeMeshClickListener = $game$.addMeshClickListener(
 				mesh,
 				({ event, intersection }) => {
-					filpCard(!side);
+					flipCard(!side);
 				}
 			);
 
@@ -80,7 +80,7 @@
 		};
 	});
 
-	async function filpCard(newSide: boolean, animate = true) {
+	async function flipCard(newSide: boolean, animate = true) {
 		const animationElevation = 0.5;
 
 		side = newSide;
@@ -156,12 +156,12 @@
 		}
 
 		function tweenR(r: Vector3[]) {
-			tweenR(r[0], r[1], {
+			tweenAndSetRotation(r[0], r[1], {
 				duration: animate ? 500 : 0,
 				easing: quadOut
 			});
 
-			function tweenR(
+			function tweenAndSetRotation(
 				startValue: Vector3,
 				endValue: Vector3,
 				options: {

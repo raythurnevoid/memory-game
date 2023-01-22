@@ -1,4 +1,4 @@
-import { tweened as svelteTweened, type Tweened } from 'svelte/motion';
+import { tweened as svelteTweened } from 'svelte/motion';
 
 export default async function tweenTo<T>(
 	startValue: T,
@@ -11,11 +11,11 @@ export default async function tweenTo<T>(
 		interpolate?: (a: T, b: T) => (t: number) => T;
 	}
 ) {
-	const pTween = svelteTweened(startValue, options);
+	const tweened = svelteTweened(startValue, options);
 
-	const unsubscribe = pTween.subscribe((p) => {
+	const unsubscribe = tweened.subscribe((p) => {
 		onChange(p);
 	});
 
-	await pTween.set(targetValue).then(unsubscribe);
+	await tweened.set(targetValue).then(unsubscribe);
 }

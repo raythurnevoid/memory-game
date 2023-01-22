@@ -38,6 +38,7 @@
 	import { createCardsRowPositions } from './game-grid';
 	import { createCamera, type Camera } from './camera';
 	import { createControls, type Controls } from './controls';
+	import ConfettiGun from './ConfettiGun.svelte';
 
 	const scene$ = writable<Scene>(undefined);
 	const camera$ = createCamera({ type: 'perspective' });
@@ -90,7 +91,7 @@
 		loadManager.onLoad = () => et.dispatchEvent(new CustomEvent('textureLoad'));
 		textureLoader = new TextureLoader(loadManager);
 
-		controls$ = createControls({ renderer, camera$, enabled: false });
+		controls$ = createControls({ renderer, camera$, enabled: true });
 
 		const destroyRaycaster = initRaycaster();
 
@@ -108,7 +109,7 @@
 		return () => {
 			$camera$.destroy();
 			$controls$?.destroy();
-			destroyRaycaster();
+			// destroyRaycaster();
 			renderer.dispose();
 			cancelAnimationFrame(frameId);
 		};
@@ -169,6 +170,8 @@
 			{#each createCardsRowPositions({ row: 4, cols: 3, offsetXRatio: 0.5 }) as position}
 				<Card {position} />
 			{/each}
+
+			<ConfettiGun />
 		{/if}
 	</div>
 </section>
