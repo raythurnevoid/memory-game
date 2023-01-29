@@ -26,7 +26,7 @@
 	onMount(() => {
 		const geometry = RoundEdgedBoxFlat(cardSize[0], cardSize[1], 10, 0.02, 10);
 
-		const backTexture = $game$.textureLoader.load(questionMarkSvg);
+		const backTexture = $game$.textureLoader.loadTexture(questionMarkSvg);
 		const material: THREE.Material[] = [
 			new THREE.MeshBasicMaterial({
 				map: backTexture,
@@ -43,7 +43,7 @@
 		];
 
 		let destroyMesh: () => void | undefined;
-		const removeOnTextureLoadListener = $game$.addTextureLoadListener(() => {
+		const removeOnTextureLoadListener = $game$.textureLoader.addTextureLoadListener(() => {
 			destroyMesh = initMesh();
 		});
 

@@ -1,6 +1,6 @@
 <!-- https://github.com/daniel-lundin/dom-confetti/blob/master/src/main.js -->
 <script lang="ts">
-	import { createEventDispatcher, onMount } from 'svelte';
+	import { createEventDispatcher, onDestroy, onMount } from 'svelte';
 	import {
 		DoubleSide,
 		Group,
@@ -15,7 +15,7 @@
 	import { rotate3d } from './rotate3d';
 	import Sphere from './Sphere.svelte';
 
-	export let origin: Position = { x: 0, y: 0, z: 0 };
+	export let origin: Position;
 
 	const dispatch = createEventDispatcher<{
 		end: void;
@@ -48,6 +48,7 @@
 
 		// function confetti(root: Scene, config = {}) {
 		// root.style.perspective = perspective;
+		console.log('Confetti onMound', game$, $game$);
 		fettis = createElements($game$.scene, evalConfig);
 
 		console.debug('animation start');
@@ -59,15 +60,16 @@
 			evalConfig.duration,
 			evalConfig.stagger
 		);
-		// }
 
 		console.debug('animation end');
 
 		dispatch('end');
+		// }
+	});
 
-		return () => {
-			destroy();
-		};
+	onDestroy(() => {
+		console.log('Confetti onDestroy');
+		destroy();
 	});
 
 	function randomPhysics(
@@ -79,9 +81,9 @@
 		const radAngle = angle * (Math.PI / 180);
 		const radSpread = spread * (Math.PI / 180);
 		return {
-			x: origin.x,
-			y: origin.y,
-			z: origin.z,
+			x: 0,
+			y: 0,
+			z: 0,
 			wobble: random() * 10,
 			wobbleSpeed: 0.1 + random() * 0.1,
 			velocity: startVelocity * 0.5 + random() * startVelocity,
@@ -134,7 +136,7 @@
 				if (time - startTime < duration || !fettis.length) {
 					requestAnimationFrame(update);
 				} else {
-					destroy(root, fettis);
+					destroy();
 					resolve(undefined);
 				}
 			}
@@ -167,6 +169,8 @@
 		});
 
 		fettis.group.rotateX(Math.PI / 2);
+		fettis.group.position.set(origin.x, origin.y, origin.z);
+		fettis.group.scale.set(0.3, 0.3, 0.3);
 
 		root.add(fettis.group);
 

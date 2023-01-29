@@ -1,5 +1,5 @@
 /**
- * Equivalent to the CSS rotate3d() function.
+ * Equivalent of CSS rotate3d() function.
  * @see https://w3c.github.io/csswg-drafts/css-transforms-2/#Rotate3dDefined
  *
  * @param x

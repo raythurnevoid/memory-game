@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import { getGameContext$ } from './+page.svelte';
 	import { SphereGeometry, Mesh, MeshBasicMaterial } from 'three';
 
@@ -8,19 +8,24 @@
 
 	const game$ = getGameContext$();
 
-	onMount(async () => {
-		const root = $game$.scene;
+	let mesh: Mesh | undefined = undefined;
 
+	onMount(() => {
 		const geometry = new SphereGeometry(5, 32, 32);
 		const material = new MeshBasicMaterial({ color: convertColorStringToHex(color) });
-		const sphere = new Mesh(geometry, material);
-		sphere.position.set(position.x, position.y, position.z);
+		mesh = new Mesh(geometry, material);
+		mesh.position.set(position.x, position.y, position.z);
 
-		root.add(sphere);
+		$game$.scene.add(mesh);
 
-		return () => {
-			root.remove(sphere);
-		};
+		return () => {};
+	});
+
+	onDestroy(() => {
+		if (mesh) {
+			console.log('Sphere destroy');
+			$game$.scene.remove(mesh);
+		}
 	});
 
 	function convertColorStringToHex(color: Color) {
