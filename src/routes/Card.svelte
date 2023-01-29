@@ -60,7 +60,7 @@
 
 			const removeMeshClickListener = $game$.addMeshClickListener(
 				mesh,
-				({ event, intersection }) => {
+				({ domEvent: event, intersection }) => {
 					flipCard(!side);
 				}
 			);

@@ -7,8 +7,7 @@
 		Scene,
 		TextureLoader,
 		Vector2,
-		WebGLRenderer,
-		type Intersection
+		Camera
 	} from 'three';
 
 	export const [setGameContext$, getGameContext$] = createContext<Readable<GameContext>>();
@@ -19,14 +18,9 @@
 		scene: Scene;
 		camera: Camera;
 		textureLoader: TextureLoader;
-		addTextureLoadListener: (cb: () => void) => Unsubscriber;
-		addMeshClickListener: (mesh: Mesh, cb: ClickListener) => Unsubscriber;
+		addTextureLoadListener: (listener: () => void) => Unsubscriber;
+		addMeshClickListener: (mesh: Mesh, listener: ClickListener) => Unsubscriber;
 	}
-
-	type ClickListener = (data: {
-		event: TouchEvent | MouseEvent;
-		intersection: Intersection;
-	}) => void;
 
 	type Unsubscriber = () => void;
 </script>
@@ -36,20 +30,27 @@
 	import { derived, writable, type Readable } from 'svelte/store';
 	import Card from './Card.svelte';
 	import { createCardsRowPositions } from './game-grid';
-	import { createCamera, type Camera } from './camera';
-	import { createControls, type Controls } from './controls';
 	import ConfettiGun from './ConfettiGun.svelte';
+	import { createRenderer$ } from '$lib/logic/renderer';
+	import { createCamera$ } from '$lib/logic/camera';
+	import { createControls$ } from '$lib/logic/controls';
+	import { createPointerHandler$, type ClickListener } from '$lib/logic/pointerHandler';
 
+	const renderer$ = createRenderer$();
 	const scene$ = writable<Scene>(undefined);
-	const camera$ = createCamera({ type: 'perspective' });
+	const camera$ = createCamera$({ type: 'perspective' });
 	const et = new EventTarget();
-	let controls$: Readable<Controls>;
-	let renderer: WebGLRenderer;
+	const pointerHandler$ = createPointerHandler$({
+		renderer$,
+		camera$
+	});
+	let controls$ = createControls$({
+		renderer$,
+		camera$,
+		enabled: false
+	});
 	let loadManager: LoadingManager;
 	let textureLoader: TextureLoader;
-	let raycaster: Raycaster;
-	let pointer: Vector2;
-	let clickListeners: [Mesh, ClickListener][] = [];
 
 	setGameContext$(
 		derived([scene$, camera$], ([$scene$, $camera$]) => {
@@ -67,15 +68,7 @@
 					return () => et.removeEventListener('textureLoad', listener);
 				},
 				addMeshClickListener: (mesh, listener) => {
-					clickListeners.push([mesh, listener]);
-
-					return () => {
-						const listenerToRemove = listener;
-						const meshToRemove = mesh;
-						clickListeners = clickListeners.filter(
-							([mesh]) => mesh !== meshToRemove && listener !== listenerToRemove
-						);
-					};
+					return $pointerHandler$?.addMeshClickListener(mesh, listener);
 				}
 			} as GameContext;
 		})
@@ -84,70 +77,28 @@
 	onMount(() => {
 		const sceneEl = document.getElementById('scene') as HTMLDivElement;
 
-		renderer = new WebGLRenderer();
-		renderer.setSize(window.innerWidth, window.innerHeight);
-
 		loadManager = new LoadingManager();
 		loadManager.onLoad = () => et.dispatchEvent(new CustomEvent('textureLoad'));
 		textureLoader = new TextureLoader(loadManager);
 
-		controls$ = createControls({ renderer, camera$, enabled: true });
-
-		const destroyRaycaster = initRaycaster();
-
-		sceneEl.appendChild(renderer.domElement);
+		sceneEl.appendChild($renderer$!.domElement);
 		$scene$ = new Scene();
 
 		let frameId: number;
 		const render = () => {
-			// $controls$.instance?.update();
-			renderer.render($scene$, $camera$.instance);
+			$renderer$!.render($scene$, $camera$!);
 			frameId = requestAnimationFrame(render);
 		};
 		render();
 
 		return () => {
-			$camera$.destroy();
-			$controls$?.destroy();
-			// destroyRaycaster();
-			renderer.dispose();
+			camera$.destroy();
+			controls$.destroy();
+			pointerHandler$.destroy();
+			renderer$.destroy();
 			cancelAnimationFrame(frameId);
 		};
 	});
-
-	function initRaycaster() {
-		raycaster = new Raycaster();
-		pointer = new Vector2();
-		renderer.domElement.addEventListener('pointermove', handlePointerMove, {
-			passive: true
-		});
-		renderer.domElement.addEventListener('click', handleClick);
-
-		function handlePointerMove(event: PointerEvent) {
-			// TODO: to improve, what if canvas is not full screen?
-			pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
-			pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
-		}
-
-		function handleClick(event: MouseEvent) {
-			event.preventDefault();
-			raycaster.setFromCamera(pointer, $camera$.instance);
-			const meshesListening = Array.from(new Set(clickListeners.map(([mesh]) => mesh)));
-			const intersections = raycaster.intersectObjects(meshesListening);
-			if (intersections.length) {
-				const intersection = intersections[0];
-				const listenersToCall = clickListeners
-					.filter(([mesh]) => mesh === intersection.object)
-					.map(([, listener]) => listener);
-				listenersToCall.forEach((listener) => listener({ event, intersection }));
-			}
-		}
-
-		return () => {
-			renderer.domElement.removeEventListener('pointermove', handlePointerMove);
-			renderer.domElement.removeEventListener('click', handleClick);
-		};
-	}
 </script>
 
 <svelte:head>
