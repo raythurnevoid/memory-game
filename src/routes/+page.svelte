@@ -1,11 +1,9 @@
 <script lang="ts" context="module">
 	import { createContext } from '@raythurnevoid/svelte-context-enhanced';
-	import { LoadingManager, type Mesh, Scene, Camera } from 'three';
-	import { createTextureLoader$, type TextureLoader } from '$lib/logic/textureLoader';
+	import { type Mesh, Scene, Camera } from 'three';
+	import { createTextureLoader$, type TextureLoader } from '$lib/logic/texture-loader';
 
 	export const [setGameContext$, getGameContext$] = createContext<Readable<GameContext>>();
-
-	export const gameBoardZ = 5;
 
 	export interface GameContext {
 		scene: Scene;
@@ -21,12 +19,12 @@
 	import { onMount } from 'svelte';
 	import { derived, writable, type Readable } from 'svelte/store';
 	import Card from './Card.svelte';
-	import { createCardsRowPositions } from './game-grid';
 	import ConfettiGun from './ConfettiGun.svelte';
 	import { createRenderer$ } from '$lib/logic/renderer';
 	import { createCamera$ } from '$lib/logic/camera';
 	import { createControls$ } from '$lib/logic/controls';
-	import { createPointerHandler$, type ClickListener } from '$lib/logic/pointerHandler';
+	import { createPointerHandler$, type ClickListener } from '$lib/logic/pointer-handler';
+	import { getGameGrid } from '../lib/logic/game-grid';
 
 	const renderer$ = createRenderer$();
 	const scene$ = writable<Scene>(undefined);
@@ -87,17 +85,10 @@
 <section>
 	<div id="scene">
 		{#if $scene$}
-			{#each createCardsRowPositions({ row: 1, cols: 3, offsetXRatio: 0.5 }) as position}
-				<Card {position} />
-			{/each}
-			{#each createCardsRowPositions({ row: 2, cols: 4 }) as position}
-				<Card {position} />
-			{/each}
-			{#each createCardsRowPositions({ row: 3, cols: 4 }) as position}
-				<Card {position} />
-			{/each}
-			{#each createCardsRowPositions({ row: 4, cols: 3, offsetXRatio: 0.5 }) as position}
-				<Card {position} />
+			{#each getGameGrid() as cols}
+				{#each cols as position}
+					<Card {position} />
+				{/each}
 			{/each}
 
 			<ConfettiGun />

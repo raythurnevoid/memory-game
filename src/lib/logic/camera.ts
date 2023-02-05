@@ -1,6 +1,7 @@
 import { browser } from '$app/environment';
 import { derived, writable } from 'svelte/store';
 import { OrthographicCamera, PerspectiveCamera } from 'three';
+import { getGameGridSize } from './game-grid';
 
 export function createCamera$(input: CreateCamera$Input) {
 	let initialized = false;
@@ -57,10 +58,13 @@ export type Camera$ = ReturnType<typeof createCamera$>;
 
 function createThreeJsCamera(type: 'perspective' | 'orthographic') {
 	const aspectRatio = window.innerWidth / window.innerHeight;
+	const gameGridSize = getGameGridSize();
+
 	if (type === 'perspective') {
 		// const camera = new PerspectiveCamera(20, aspectRatio, 0.1, 1000);
 		const camera = new PerspectiveCamera(90, aspectRatio, 0.1, 10000);
-		camera.position.set(1.8, -3, 500);
+		// Set camera position at the center of the game grid using: gameGridSize.w and gameGridSize.h
+		camera.position.set(gameGridSize.w * 0.5, -gameGridSize.h * 0.5, 500);
 
 		return camera;
 	} else {
@@ -73,7 +77,7 @@ function createThreeJsCamera(type: 'perspective' | 'orthographic') {
 			-10000,
 			10000
 		);
-		camera.position.set(1.8, -3, 1000);
+		camera.position.set(gameGridSize.w * 0.5, -gameGridSize.h * 0.5, 1000);
 
 		return camera;
 	}

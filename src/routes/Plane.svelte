@@ -2,9 +2,11 @@
 	import { createEventDispatcher, onDestroy, onMount } from 'svelte';
 	import { getGameContext$ } from './+page.svelte';
 	import { PlaneGeometry, Mesh, MeshBasicMaterial, DoubleSide } from 'three';
-	import type { ClickEvent } from '$lib/logic/pointerHandler';
+	import type { ClickEvent } from '$lib/logic/pointer-handler';
+	import type { Position, Size } from '$lib/logic/types';
 
 	export let position: Position;
+	export let size: Size;
 	export let color: Color;
 
 	const dispatch = createEventDispatcher<{
@@ -16,7 +18,7 @@
 	let mesh: Mesh | undefined = undefined;
 
 	onMount(() => {
-		const geometry = new PlaneGeometry(500, 500, 8, 8);
+		const geometry = new PlaneGeometry(size.w, size.h, 8, 8);
 		const material = new MeshBasicMaterial({
 			color: convertColorStringToHex(color),
 			side: DoubleSide,

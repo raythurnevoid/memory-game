@@ -1,9 +1,23 @@
 <script lang="ts">
+	import { getGameGridSize, getGameGridZ } from '$lib/logic/game-grid';
+	import type { Position, Size } from '$lib/logic/types';
 	import Confetti from './Confetti.svelte';
 	import Plane from './Plane.svelte';
 
 	let confettis: Position[] = [];
-	let key = {};
+
+	const gameGridSize = getGameGridSize();
+
+	const position: Position = {
+		x: gameGridSize.w * 0.5,
+		y: -gameGridSize.h * 0.5,
+		z: getGameGridZ()
+	};
+
+	const size: Size = {
+		w: gameGridSize.w,
+		h: gameGridSize.h
+	};
 
 	function handleClick(event: Plane['$$events_def']['click']) {
 		confettis = [
@@ -23,15 +37,7 @@
 	}
 </script>
 
-<Plane
-	position={{
-		x: 0,
-		y: 0,
-		z: 100
-	}}
-	color="red"
-	on:click={handleClick}
-/>
+<Plane {position} {size} color="red" on:click={handleClick} />
 
 {#each confettis as confetti (confetti)}
 	<Confetti origin={confetti} on:end={() => handleConfettiEnd(confetti)} />

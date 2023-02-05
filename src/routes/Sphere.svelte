@@ -2,6 +2,7 @@
 	import { onDestroy, onMount } from 'svelte';
 	import { getGameContext$ } from './+page.svelte';
 	import { SphereGeometry, Mesh, MeshBasicMaterial } from 'three';
+	import type { Position } from '$lib/logic/types';
 
 	export let position: Position;
 	export let color: Color;

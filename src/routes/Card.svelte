@@ -1,30 +1,34 @@
-<script lang="ts" context="module">
-	const cardInitialScale = 1;
-</script>
-
 <script lang="ts">
 	import * as THREE from 'three';
 	import { onMount } from 'svelte';
 	import questionMarkSvg from '$lib/images/question-mark.svg';
 	import RoundEdgedBoxFlat from './RoundEdgedBoxFlat';
-	import { gameBoardZ, getGameContext$ } from './+page.svelte';
+	import { getGameContext$ } from './+page.svelte';
 	import { quadIn, quadOut } from 'svelte/easing';
 	import tweenTo from '$lib/logic/tween';
 	import { Vector3 } from 'three';
-	import { cardSize, type Position } from './game-grid';
+	import { getCardSize, getGameGridZ, type Position } from '../lib/logic/game-grid';
 
 	/**
 	 * `true` is face up, `false` is face down
 	 */
 	export let side: boolean = false;
-	export let position: Position = [0, 0];
+	export let position: Position = {
+		x: 0,
+		y: 0
+	};
 
 	const game$ = getGameContext$();
 
+	const cardSize = getCardSize();
+	const cardInitialScale = 1;
 	let mesh: THREE.Mesh;
 
 	onMount(() => {
-		const geometry = RoundEdgedBoxFlat(cardSize[0], cardSize[1], 10, 0.02, 10);
+		const width = cardSize.w;
+		const height = cardSize.h;
+		const depth = 10;
+		const geometry = RoundEdgedBoxFlat(width, height, depth, 0.02, 10);
 
 		const backTexture = $game$.textureLoader.loadTexture(questionMarkSvg);
 		const material: THREE.Material[] = [
@@ -49,9 +53,9 @@
 
 		function initMesh() {
 			mesh = new THREE.Mesh(geometry, material);
-			mesh.position.setX(position[0]);
-			mesh.position.setY(position[1]);
-			mesh.position.setZ(gameBoardZ);
+			mesh.position.setX(position.x);
+			mesh.position.setY(position.y);
+			mesh.position.setZ(getGameGridZ() + depth * 0.5);
 			mesh.scale.set(cardInitialScale, cardInitialScale, cardInitialScale);
 
 			flipCard(side, false);
@@ -132,8 +136,8 @@
 		function createPStages() {
 			const p: Vector3[] = [
 				new THREE.Vector3(mesh.position.x, mesh.position.y, mesh.position.z),
-				new THREE.Vector3(mesh.position.x, mesh.position.y, gameBoardZ + cardSize[0]),
-				new THREE.Vector3(mesh.position.x, mesh.position.y, gameBoardZ)
+				new THREE.Vector3(mesh.position.x, mesh.position.y, getGameGridZ() + cardSize.w),
+				new THREE.Vector3(mesh.position.x, mesh.position.y, getGameGridZ())
 			];
 
 			return p;

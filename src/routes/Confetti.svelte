@@ -1,5 +1,6 @@
 <!-- https://github.com/daniel-lundin/dom-confetti/blob/master/src/main.js -->
 <script lang="ts">
+	import type { Position } from '$lib/logic/types';
 	import { createEventDispatcher, onDestroy, onMount } from 'svelte';
 	import {
 		DoubleSide,
@@ -108,6 +109,7 @@
 		const wobbleY = y + 10 * Math.sin(wobble);
 
 		fetti.mesh.position.set(wobbleX, wobbleY, z);
+		// TODO: fetti.mesh.scale.set(-10 + z * 0.1, -10 + z * 0.1, -10 + z * 0.1);
 		const matrix4 = new Matrix4();
 		matrix4.fromArray(rotate3d(1, 1, 1, tiltAngle).flatMap((row) => row));
 		fetti.mesh.rotation.setFromRotationMatrix(matrix4);
